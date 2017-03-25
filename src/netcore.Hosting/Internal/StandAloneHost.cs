@@ -21,6 +21,7 @@ namespace netcore.Hosting.Internal
 
         private IServiceProvider _applicationServices;
         private ILogger<StandAloneHost> _logger;
+        private bool _isInitialized;
 
         // Used for testing only
         internal StandAloneHostOptions Options => _options;
@@ -66,7 +67,10 @@ namespace netcore.Hosting.Internal
 
         public void Initialize()
         {
-            BuildApplication();
+            if (!_isInitialized)
+            {
+                BuildApplication();
+            }
         }
 
         public virtual void Start()
@@ -96,6 +100,25 @@ namespace netcore.Hosting.Internal
                     _logger.LogError("An Error occured on startup {0}", exception.Message);
                 }
             }
+
+            WaitForExit();
+        }
+
+        private void WaitForExit()
+        {
+            Console.WriteLine("Stand alone host - RUNNING");
+            Console.WriteLine("Press esc exit");
+
+            do
+            {
+                var input = Console.ReadKey();
+
+                if (input.Key == ConsoleKey.Escape)
+                {
+                    break;
+                }
+
+            } while (true);
         }
 
         private void EnsureApplicationServices()
@@ -117,7 +140,7 @@ namespace netcore.Hosting.Internal
             _startup = _hostingServiceProvider.GetRequiredService<IStartup>();
         }
 
-        private void BuildApplication()
+        private bool BuildApplication()
         {
             try
             {
@@ -130,6 +153,8 @@ namespace netcore.Hosting.Internal
                 Action<IApplicationBuilder> configure = _startup.Configure;
 
                 configure(builder);
+
+                return _isInitialized = true;
             }
             catch (Exception ex) when (_options.CaptureStartupErrors)
             {
@@ -149,6 +174,8 @@ namespace netcore.Hosting.Internal
                 var showDetailedErrors = hostingEnv.IsDevelopment() || _options.DetailedErrors;
 
             }
+
+            return false;
         }
 
         public void Dispose()
